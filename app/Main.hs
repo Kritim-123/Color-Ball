@@ -85,9 +85,9 @@ main = play window bgColor fps initialState toPicture eventHandler update
     -- Merge two circles into one with a new radius, position, and mixed color
     mergeCircles :: Circle -> Circle -> Circle
     mergeCircles (x1, y1, r1, c1, vx1, vy1) (x2, y2, r2, c2, vx2, vy2) =
-        let newRadius = sqrt (r1^2 + r2^2) -- Area-based radius addition
-            newX = (x1 * r1 + x2 * r2) / (r1 + r2) -- Weighted average position
-            newY = (y1 * r1 + y2 * r2) / (r1 + r2)
+        let newRadius = r1
+            newX = x1
+            newY = y1
             newColor = mixColors c1 c2
             newVx = (vx1 + vx2) / 2 -- Average velocity
             newVy = (vy1 + vy2) / 2
