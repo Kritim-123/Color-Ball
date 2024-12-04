@@ -54,28 +54,6 @@ extra-doc-files:    CHANGELOG.md
 common warnings
     ghc-options: -Wall
 
-library
-    -- Import common warning flags.
-    import:           warnings
-
-    -- Modules exported by the library.
-    exposed-modules:  MyLib
-
-    -- Modules included in this library but not exported.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- Other library packages from which modules are imported.
-    build-depends:    base ^>=4.17.2.1
-
-    -- Directories containing source files.
-    hs-source-dirs:   src-lib
-
-    -- Base language which the package is written in.
-    default-language: Haskell2010
-
 executable Color-Ball
     -- Import common warning flags.
     import:           warnings
@@ -84,7 +62,7 @@ executable Color-Ball
     main-is:          Main.hs
 
     -- Modules included in this executable, other than Main.
-    -- other-modules:
+    other-modules: Circle, Spike
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
@@ -98,30 +76,3 @@ executable Color-Ball
 
     -- Base language which the package is written in.
     default-language: Haskell2010
-
-test-suite Color-Ball-test
-    -- Import common warning flags.
-    import:           warnings
-
-    -- Base language which the package is written in.
-    default-language: Haskell2010
-
-    -- Modules included in this executable, other than Main.
-    -- other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-
-    -- The interface type and version of the test suite.
-    type:             exitcode-stdio-1.0
-
-    -- Directories containing source files.
-    hs-source-dirs:   test
-
-    -- The entrypoint to the test suite.
-    main-is:          Main.hs
-
-    -- Test dependencies.
-    build-depends:
-        base ^>=4.17.2.1,
-        Color-Ball

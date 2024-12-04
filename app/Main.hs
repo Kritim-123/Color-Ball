@@ -2,22 +2,28 @@ module Main where
 
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
-import Data.List (tails)
-import Data.Maybe (catMaybes)
+import Circle
 
-type Circle = (Float, Float, Float, Color, Float, Float) -- (x, y, radius, color, vx, vy)
-
+-- Define the game state
 data GameState = GameState {
-    circles :: [Circle],
-    clickCount :: Int
+    circles :: [Circle],            -- List of circles
+    clickCount :: Int,              -- Count of clicks
+    animations :: [(Circle, [Color])] -- Active animations (circle and color transition)
 }
 
+-- Predefined colors for circles
 colors :: [Color]
 colors = [red, blue, green, violet, aquamarine]
 
-getColor :: Int -> Color
-getColor clickCount = colors !! ((clickCount - 1) `mod` length colors)
+-- Get a color based on the click count
+getColorFromClick :: Int -> Color
+getColorFromClick clickCount = colors !! ((clickCount - 1) `mod` length colors)
 
+-- Extract color from a circle
+extractColor :: Circle -> Color
+extractColor (MkCircle _ _ _ color _ _) = color
+
+-- Main function
 main :: IO ()
 main = play window bgColor fps initialState toPicture eventHandler update
   where
@@ -25,82 +31,104 @@ main = play window bgColor fps initialState toPicture eventHandler update
     bgColor = white
     fps = 60
 
+    -- Initial game state
     initialState :: GameState
-    initialState = GameState [] 0
+    initialState = GameState [] 0 []
 
-    -- Convert game state to a picture by drawing each circle
+    -- Render the game state to a picture
     toPicture :: GameState -> Picture
-    toPicture (GameState circles _) =
-        Pictures [translate x y (Color c (circleSolid r)) | (x, y, r, c, _, _) <- circles]
+    toPicture (GameState circles _ animations) =
+        Pictures $
+            -- Render all static circles
+            [circleToPicture circle | circle <- circles] ++
+            -- Render circles currently animating with their interpolated color
+            [circleToPicture (updateCircleColor c (head colors)) | (c, colors) <- animations, not (null colors)]
 
-    -- Event handler for mouse clicks
+    -- Handle mouse click events
     eventHandler :: Event -> GameState -> GameState
-    eventHandler (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) (GameState circles clickCount) =
-        let newCircleColor = getColor (clickCount + 1)
+    eventHandler (EventKey (MouseButton LeftButton) Down _ (mouseX, mouseY)) (GameState circles clickCount animations) =
+        let newCircleColor = getColorFromClick (clickCount + 1)
             radius = 30
             vx = (-1) + fromIntegral (clickCount `mod` 4)
             vy = 1 + fromIntegral (clickCount `mod` 4)
-            newCircle = (mouseX, mouseY, radius, newCircleColor, vx, vy)
-        in GameState (newCircle : circles) (clickCount + 1)
+            newCircle = MkCircle mouseX mouseY radius newCircleColor vx vy
+        in GameState (newCircle : circles) (clickCount + 1) animations
     eventHandler _ state = state
 
-    -- Update the state by moving each circle and handling collisions
+    -- Update game state (move circles, handle collisions, and update animations)
     update :: Float -> GameState -> GameState
-    update _ (GameState circles clickCount) =
+    update _ (GameState circles clickCount animations) =
         let movedCircles = map moveCircle circles
-            newCircles = handleCollisions movedCircles
-        in GameState newCircles clickCount
+            (newCircles, newAnimations) = handleCollisions movedCircles animations
+            updatedAnimations = updateAnimations newAnimations
+        in GameState newCircles clickCount updatedAnimations
 
-    -- Move each circle based on its velocity, and bounce off edges
+    -- Move a circle based on its velocity and bounce off edges
     moveCircle :: Circle -> Circle
-    moveCircle (x, y, r, c, vx, vy) =
+    moveCircle (MkCircle x y r c vx vy) =
         let newX = x + vx
             newY = y + vy
             newVx = if newX + r > 300 || newX - r < -300 then -vx else vx
             newVy = if newY + r > 300 || newY - r < -300 then -vy else vy
-        in (newX, newY, r, c, newVx, newVy)
+        in MkCircle newX newY r c newVx newVy
 
-    -- Detect and handle collisions between circles
-    handleCollisions :: [Circle] -> [Circle]
-    handleCollisions [] = []
-    handleCollisions (c:cs) =
-        let (mergedCircle, remainingCircles) = processCollisions c cs
-        in mergedCircle : handleCollisions remainingCircles
+    -- Handle collisions and generate animations for the bigger circle
+    handleCollisions :: [Circle] -> [(Circle, [Color])] -> ([Circle], [(Circle, [Color])])
+    handleCollisions [] animations = ([], animations)
+    handleCollisions (c:cs) animations =
+        let (processedCircle, remainingCircles, newAnimations) = processCollisions c cs animations
+            (restCircles, restAnimations) = handleCollisions remainingCircles newAnimations
+        in (processedCircle : restCircles, restAnimations)
 
-    -- Process collisions for a given circle with the rest of the circles
-    processCollisions :: Circle -> [Circle] -> (Circle, [Circle])
-    processCollisions c [] = (c, [])
-    processCollisions c (c2:cs) =
-        if circlesCollide c c2
-        then let combinedCircle = mergeCircles c c2
-             in processCollisions combinedCircle cs -- Continue merging with remaining circles
-        else let (nextCircle, remaining) = processCollisions c cs
-             in (nextCircle, c2 : remaining)
+    -- Process collisions for a given circle
+    processCollisions :: Circle -> [Circle] -> [(Circle, [Color])] -> (Circle, [Circle], [(Circle, [Color])])
+    processCollisions c [] animations = (c, [], animations)
+    processCollisions c (c2:cs) animations
+        | circlesCollide c c2 =
+            let biggerCircle = if getRadius c >= getRadius c2 then c else c2
+                smallerCircle = if getRadius c < getRadius c2 then c else c2
+                combinedColor = mixColors (extractColor biggerCircle) (extractColor smallerCircle)
+                colorFrames = interpolateColors (extractColor biggerCircle) combinedColor
+                newAnimations = (biggerCircle, colorFrames) : animations
+            in (c {getColor = combinedColor}, cs, newAnimations)
+        | otherwise =
+            let (nextCircle, remaining, anims) = processCollisions c cs animations
+            in (nextCircle, c2 : remaining, anims)
 
     -- Check if two circles collide
     circlesCollide :: Circle -> Circle -> Bool
-    circlesCollide (x1, y1, r1, _, _, _) (x2, y2, r2, _, _, _) =
+    circlesCollide (MkCircle x1 y1 r1 _ _ _) (MkCircle x2 y2 r2 _ _ _) =
         (x2 - x1)^2 + (y2 - y1)^2 <= (r1 + r2)^2
 
-    -- Merge two circles into one with a new radius, position, and mixed color
-    mergeCircles :: Circle -> Circle -> Circle
-    mergeCircles (x1, y1, r1, c1, vx1, vy1) (x2, y2, r2, c2, vx2, vy2) =
-        let newRadius = r1
-            newX = x1
-            newY = y1
-            newColor = mixColors c1 c2
-            newVx = (vx1 + vx2) / 2 -- Average velocity
-            newVy = (vy1 + vy2) / 2
-        in (newX, newY, newRadius, newColor, newVx, newVy)
+    -- Update animations by advancing color frames
+    updateAnimations :: [(Circle, [Color])] -> [(Circle, [Color])]
+    updateAnimations = map (\(c, colors) -> (c, tail colors)) . filter (not . null . snd)
 
-    -- Blend two colors
+    -- Interpolate between two colors to create a list of colors
+    interpolateColors :: Color -> Color -> [Color]
+    interpolateColors c1 c2 = [blendColors c1 c2 t | t <- [0, 0.05 .. 1]]
+
+    -- Blend two colors into one
     mixColors :: Color -> Color -> Color
     mixColors c1 c2 =
         let (r1, g1, b1, a1) = rgbaOfColor c1
             (r2, g2, b2, a2) = rgbaOfColor c2
-            newR = (r1 + r2) / 2
-            newG = (g1 + g2) / 2
-            newB = (b1 + b2) / 2
-            newA = (a1 + a2) / 2
-        in makeColor newR newG newB newA
+        in makeColor ((r1 + r2) / 2) ((g1 + g2) / 2) ((b1 + b2) / 2) ((a1 + a2) / 2)
+
+    -- Blend two colors based on interpolation factor t
+    blendColors :: Color -> Color -> Float -> Color
+    blendColors c1 c2 t =
+        let (r1, g1, b1, a1) = rgbaOfColor c1
+            (r2, g2, b2, a2) = rgbaOfColor c2
+            blend x1 x2 = x1 * (1 - t) + x2 * t
+        in makeColor (blend r1 r2) (blend g1 g2) (blend b1 b2) (blend a1 a2)
+
+    -- Update the color of a circle
+    updateCircleColor :: Circle -> Color -> Circle
+    updateCircleColor (MkCircle x y r _ vx vy) newColor = MkCircle x y r newColor vx vy
+
+    -- Convert a circle to a picture
+    circleToPicture :: Circle -> Picture
+    circleToPicture (MkCircle x y r color _ _) =
+        translate x y (Color color (circleSolid r))
 

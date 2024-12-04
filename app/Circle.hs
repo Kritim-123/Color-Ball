@@ -2,6 +2,13 @@ module Circle where
 
 import Graphics.Gloss
 
-coloredCircle :: Color -> Picture
-coloredCircle col = color col (circleSolid 5)
-
+data Circle = MkCircle
+ {
+  getX      ::  Float,
+  getY      ::  Float,
+  getRadius ::  Float,
+  getColor  ::  Color,
+  getXSpeed ::  Float,
+  getYSpeed ::  Float
+}
+  deriving (Eq, Show)
