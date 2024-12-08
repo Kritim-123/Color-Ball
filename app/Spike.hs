@@ -5,7 +5,8 @@ import Circle
 
 data Spike = Spike {
     spikePosition :: Point,  -- (x, y) position
-    spikeColor    :: Color   -- Current color of the spike
+    spikeColor    :: Color,   -- Current color of the spike
+    spikeRadius   :: Float
 } deriving (Eq, Show)
 
 processCollisionsWithSpikes :: [Circle] -> [Spike] -> ([Circle], [Spike])
@@ -20,9 +21,9 @@ processCollisionsWithSpikes circles spikes =
            else (circle : remainingCircles, newSpikes) -- Circle is kept
 
     checkSpikeCollision :: Circle -> Spike -> (Bool, [Spike]) -> (Bool, [Spike])
-    checkSpikeCollision (MkCircle x y r color _ _) (Spike (sx, sy) spikeColor) (collided, accSpikes)
-        | (sx - x)^2 + (sy - y)^2 <= r^2 =
-            (True, Spike (sx, sy) color : accSpikes) -- Update spike with circle's color
+    checkSpikeCollision (MkCircle x y r color _ _) (Spike (sx, sy) spikeColor rad) (collided, accSpikes)
+        | (sx - x)^2 + (sy - y)^2 <= (r + rad)^2 =
+            (True, Spike (sx, sy) color rad: accSpikes) -- Update spike with circle's color
         | otherwise =
-            (collided, Spike (sx, sy) spikeColor : accSpikes) -- Keep spike unchanged
+            (collided, Spike (sx, sy) spikeColor rad: accSpikes) -- Keep spike unchanged
 

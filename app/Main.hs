@@ -37,7 +37,7 @@ main = play window bgColor fps initialState toPicture eventHandler update
     initialState :: GameState
     initialState = GameState [] 0 [] initialSpikes
       where
-        initialSpikes = [Spike (-200, 0) black, Spike (200, 0) black]  -- Example positions
+        initialSpikes = [Spike (-200, 0) black 30, Spike (200, 0) black 30]  -- Example positions
 
     -- Render the game state to a picture
     -- toPicture :: GameState -> Picture
@@ -55,7 +55,7 @@ main = play window bgColor fps initialState toPicture eventHandler update
                 [circleToPicture (updateCircleColor c (head colors)) | (c, colors) <- animations, not (null colors)]
 
     spikeToPicture :: Spike -> Picture
-    spikeToPicture (Spike (x, y) spikeColor) =
+    spikeToPicture (Spike (x, y) spikeColor rad) =
         translate x y $ color spikeColor $ pictures
             [rotate angle $ polygon [(0, 0), (10, 30), (-10, 30)] | angle <- [0, 90, 180, 270]]
 
@@ -85,14 +85,14 @@ main = play window bgColor fps initialState toPicture eventHandler update
     -- Update game state (move circles, handle collisions, and update animations)
     update :: Float -> GameState -> GameState
     update _ (GameState circles clickCount animations spikes) =
-      let movedCircles = map moveCircle circles
-        -- Handle collisions with spikes (returns updated circles and spikes)
-        (remainingCircles, updatedSpikes) = processCollisionsWithSpikes movedCircles spikes
-        -- Handle collisions between circles (merging and animations)
-        (finalCircles, updatedAnimations) = handleCollisions remainingCircles animations
-        -- Update animations
-        finalAnimations = updateAnimations updatedAnimations
-      in GameState finalCircles clickCount finalAnimations updatedSpikes
+        let movedCircles = map moveCircle circles
+            -- Handle collisions with spikes (returns updated circles and spikes)
+            (remainingCircles, updatedSpikes) = processCollisionsWithSpikes movedCircles spikes
+            -- Handle collisions between circles (merging and animations)
+            (finalCircles, updatedAnimations) = handleCollisions remainingCircles animations
+            -- Update animations
+            finalAnimations = updateAnimations updatedAnimations
+        in GameState finalCircles clickCount finalAnimations updatedSpikes
 
   --  update :: Float -> GameState -> GameState
   --  update _ gameState@(GameState circles clickCount animations spikes) =
@@ -101,10 +101,10 @@ main = play window bgColor fps initialState toPicture eventHandler update
   --          (newCircles, newAnimations, newSpikes) = foldr processCircle ([], animations, spikes) movedCircles
   --      in GameState newCircles clickCount newAnimations newSpikes
 
-    processCircle :: Circle -> ([Circle], [(Circle, [Color])], [Spike]) -> ([Circle], [(Circle, [Color])], [Spike])
-    processCircle circle (circles, animations, spikes) =
-        let (updatedCircle, updatedSpikes) = processCollisionsWithSpikes circle spikes
-        in (updatedCircle : circles, animations, updatedSpikes ++ spikes)
+    -- processCircle :: Circle -> ([Circle], [(Circle, [Color])], [Spike]) -> ([Circle], [(Circle, [Color])], [Spike])
+    -- processCircle circle (circles, animations, spikes) =
+    --     let (updatedCircle, updatedSpikes) = processCollisionsWithSpikes circle spikes
+    --     in (updatedCircle : circles, animations, updatedSpikes ++ spikes)
 
     -- Move a circle based on its velocity and bounce off edges
     moveCircle :: Circle -> Circle
