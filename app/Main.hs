@@ -83,19 +83,23 @@ main = play window bgColor fps initialState toPicture eventHandler update
         gameState
 
     -- Update game state (move circles, handle collisions, and update animations)
-    -- update :: Float -> GameState -> GameState
-    -- update _ (GameState circles clickCount animations) =
-    --     let movedCircles = map moveCircle circles
-    --         (newCircles, newAnimations) = handleCollisions movedCircles animations
-    --         updatedAnimations = updateAnimations newAnimations
-    --     in GameState newCircles clickCount updatedAnimations
-    
     update :: Float -> GameState -> GameState
-    update _ gameState@(GameState circles clickCount animations spikes) =
-        let movedCircles = map moveCircle circles
-            -- Make sure that processCircle is used correctly with foldr
-            (newCircles, newAnimations, newSpikes) = foldr processCircle ([], animations, spikes) movedCircles
-        in GameState newCircles clickCount newAnimations newSpikes
+    update _ (GameState circles clickCount animations spikes) =
+      let movedCircles = map moveCircle circles
+        -- Handle collisions with spikes (returns updated circles and spikes)
+        (remainingCircles, updatedSpikes) = processCollisionsWithSpikes movedCircles spikes
+        -- Handle collisions between circles (merging and animations)
+        (finalCircles, updatedAnimations) = handleCollisions remainingCircles animations
+        -- Update animations
+        finalAnimations = updateAnimations updatedAnimations
+      in GameState finalCircles clickCount finalAnimations updatedSpikes
+
+  --  update :: Float -> GameState -> GameState
+  --  update _ gameState@(GameState circles clickCount animations spikes) =
+  --      let movedCircles = map moveCircle circles
+  --          -- Make sure that processCircle is used correctly with foldr
+  --          (newCircles, newAnimations, newSpikes) = foldr processCircle ([], animations, spikes) movedCircles
+  --      in GameState newCircles clickCount newAnimations newSpikes
 
     processCircle :: Circle -> ([Circle], [(Circle, [Color])], [Spike]) -> ([Circle], [(Circle, [Color])], [Spike])
     processCircle circle (circles, animations, spikes) =
