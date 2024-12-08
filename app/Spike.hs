@@ -3,15 +3,19 @@ module Spike where
 import Graphics.Gloss
 import Circle
 
-data Spike = MkSpike
- {
-  getXPos :: Float, 
-  getYPos :: Float,
-  getColor :: Color
-}
-  deriving (Eq, Show)
+data Spike = Spike {
+    spikePosition :: Point,  -- (x, y) position
+    spikeColor    :: Color   -- Current color of the spike
+} deriving (Eq, Show)
 
--- Check if a spike contacts a circle
-spikeContactsCircle :: Spike -> Circle -> Bool
-spikeContactsCircle (MkSpike x1 y1 _) (MkCircle x2 y2 r2 _ _ _) =
-    (x2 - x1)^2 + (y2 - y1)^2 <= r2^2
+processCollisionsWithSpikes :: Circle -> [Spike] -> (Circle, [Spike])
+processCollisionsWithSpikes circle spikes =
+    foldr (\spike (c, accSpikes) ->
+              if spikeCollide c spike
+              then (c { getColor = white }, accSpikes ++ [spike { spikeColor = getColor c }])
+              else (c, accSpikes ++ [spike]))
+          (circle, []) spikes
+
+spikeCollide :: Circle -> Spike -> Bool
+spikeCollide (MkCircle x y r _ _ _) (Spike (sx, sy) _) =
+    (sx - x)^2 + (sy - y)^2 <= r^2
